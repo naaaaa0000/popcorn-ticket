@@ -143,7 +143,7 @@
     document.getElementById("loginCard").classList.remove("hidden");
   }
 
-  async function issueTicket() {
+ async function issueTicket() {
     const product = document.getElementById("product").value;
     try {
       const res = await callGas("issueTicket", { product });
@@ -151,8 +151,13 @@
       document.getElementById("issuedCode").textContent = res.code;
       const qrel = document.getElementById("qrcode");
       qrel.innerHTML = "";
-      // 購入者用チケットページのURL（ご自身のGitHub PagesのURLに後ほど差し替えます）
-      const claimUrl = location.href.replace("index.html", "ticket.html") + "?t=" + res.claimToken;
+      
+      // ==========================================
+      // ▼ ここから下の「あなたのGitHub PagesのURL」をご自身のものに書き換えます
+      // ==========================================
+      const claimUrl = "https://naaaaa0000.github.io/popcorn-ticket/ticket.html?t=" + res.claimToken;
+      // ==========================================
+
       new QRCode(qrel, { text: claimUrl, width: 180, height: 180 });
       document.getElementById("issueResult").classList.remove("hidden");
     } catch(e) { alert(e.message); }
