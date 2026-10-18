@@ -15,6 +15,8 @@
     .redeemed { background: #e2e8f0; color: #475569; }
     .code { font-size: 40px; font-weight: 900; letter-spacing: 4px; margin: 10px 0; background: #f1f5f9; border-radius: 12px; padding: 10px; }
     .qr { display: flex; justify-content: center; margin: 16px 0; padding: 10px; background: #fff; border: 2px dashed #cbd5e1; border-radius: 12px; }
+    .info-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-top: 14px; text-align: left; font-size: 14px; }
+    .info-box div { margin: 4px 0; }
   </style>
 </head>
 <body>
@@ -27,14 +29,19 @@
         <div id="productName" style="font-size: 24px; font-weight: 800;"></div>
         <div class="code" id="codeText"></div>
         <div class="qr"><div id="qrcode"></div></div>
-        <div style="font-size: 13px; color: #64748b;">スタッフにこの画面をご提示ください</div>
+        
+        <div class="info-box">
+          <div>📍 <b>引換場所：</b><span id="locText"></span></div>
+          <div>⏰ <b>引換可能時間：</b><span id="hoursText"></span></div>
+        </div>
+
+        <div style="font-size: 13px; color: #64748b; margin-top: 14px;">スタッフにこの画面をご提示ください</div>
       </div>
       <div id="errorMsg" style="color: red; font-weight: bold; display: none;"></div>
     </div>
   </div>
 
 <script>
-  // ★index.htmlと同じGASのウェブアプリURLをここに貼り付けてください
   const GAS_API_URL = "https://script.google.com/macros/s/AKfycbx3jGCRb8COs7t9kMqWGiVJrqWLMzj43K8Kto3O9fwvQXfYYiaRvoTBrSGLJbCEA7Nn/exec";
 
   window.addEventListener("load", async () => {
@@ -55,6 +62,8 @@
       document.getElementById("ticketInfo").style.display = "block";
       document.getElementById("productName").textContent = t.product;
       document.getElementById("codeText").textContent = t.code;
+      document.getElementById("locText").textContent = t.location || "未設定";
+      document.getElementById("hoursText").textContent = t.hours || "未設定";
 
       const badge = document.getElementById("statusBadge");
       if (t.status === "未引換") {
@@ -62,7 +71,7 @@
         new QRCode(document.getElementById("qrcode"), { text: t.redeemToken, width: 180, height: 180 });
       } else {
         badge.textContent = "引換済み"; badge.className = "badge redeemed";
-        document.querySelector(".qr").innerHTML = "<div style='color:#64748b; font-weight:bold;'>このチケットは引換済みです</div>";
+        document.querySelector(".qr").innerHTML = "<div style='color:#64748b; font-weight:bold; padding:20px;'>このチケットは引換済みです</div>";
       }
     } catch(e) { showError(e.message); }
   });

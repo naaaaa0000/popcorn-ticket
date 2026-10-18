@@ -8,20 +8,24 @@
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
     body { font-family: system-ui, sans-serif; background: #f1f5f9; margin: 0; padding: 16px; color: #1e293b; }
-    .wrap { max-width: 500px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .wrap { max-width: 520px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
     h2 { margin-top: 0; text-align: center; }
     .card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
     input, select, button { width: 100%; padding: 12px; font-size: 16px; border-radius: 8px; border: 1px solid #94a3b8; margin-top: 6px; box-sizing: border-box; }
     button { background: #2563eb; color: #fff; font-weight: bold; border: none; cursor: pointer; }
     button.success { background: #166534; font-size: 18px; padding: 16px; }
     button.danger { background: #b91c1c; }
-    #video-container { position: relative; width: 100%; height: 260px; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 10px; display: none; }
+    /* カメラ画面を大きく拡大 (高さを400pxに) */
+    #video-container { position: relative; width: 100%; height: 400px; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 10px; display: none; }
     video { width: 100%; height: 100%; object-fit: cover; }
     .result-box { padding: 14px; border-radius: 8px; margin-top: 14px; font-weight: bold; text-align: center; }
     .ok { background: #dcfce7; color: #166534; }
     .bad { background: #fee2e2; color: #991b1b; }
     .hidden { display: none !important; }
     .code-disp { font-size: 32px; font-weight: 900; letter-spacing: 3px; text-align: center; margin: 10px 0; }
+    .statgrid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin-top: 10px; }
+    .stat { background: #fff; border: 1px solid #cbd5e1; padding: 10px; border-radius: 8px; text-align: center; }
+    .stat b { display: block; font-size: 20px; color: #1d4ed8; margin-top: 4px; }
   </style>
 </head>
 <body>
@@ -67,7 +71,7 @@
       <!-- 引換担当者パネル -->
       <div id="redeemPanel" class="card hidden">
         <h3>チケット照会・引換</h3>
-        <button id="scanToggleBtn" onclick="toggleScanner()" style="background:#0ea5e9;">カメラ起動（QRスキャン）</button>
+        <button id="scanToggleBtn" onclick="toggleScanner()" style="background:#0ea5e9; padding: 14px; font-size: 16px;">📷 カメラ起動（QRスキャン）</button>
         <div id="video-container">
           <video id="video" playsinline></video>
           <canvas id="canvas" class="hidden"></canvas>
@@ -82,9 +86,18 @@
       <!-- 管理者パネル -->
       <div id="adminPanel" class="card hidden">
         <h3>管理者メニュー</h3>
-        <button onclick="loadSummary()">集計更新</button>
-        <div id="summary" style="margin-top:10px; font-size:14px;"></div>
-        <hr style="margin:14px 0;">
+        <button onclick="loadSummary()">集計・設定を更新</button>
+        <div id="summary" style="margin-top:10px;"></div>
+
+        <hr style="margin:14px 0; border:0; border-top:1px solid #cbd5e1;">
+        <h3>イベント設定（スプレッドシート連動）</h3>
+        <label>販売場所名</label>
+        <input id="adminLocation" placeholder="例: メイン会場 販売ブース">
+        <label>販売可能時間</label>
+        <input id="adminHours" placeholder="例: 10:00〜16:00">
+        <button style="background:#0ea5e9;" onclick="saveSettings()">設定を保存する</button>
+
+        <hr style="margin:14px 0; border:0; border-top:1px solid #cbd5e1;">
         <label>未引換番号の取消</label>
         <input id="cancelCode" placeholder="例: A2B3C" maxlength="5">
         <button class="danger" onclick="cancelTicket()">番号を取り消す</button>
@@ -93,8 +106,7 @@
   </div>
 
 <script>
-  // ★ここにGASのウェブアプリURLを貼り付けてください
-  const GAS_API_URL = "https://script.google.com/macros/s/AKfycbx3jGCRb8COs7t9kMqWGiVJrqWLMzj43K8Kto3O9fwvQXfYYiaRvoTBrSGLJbCEA7Nn/exec";
+  const GAS_API_URL = "https://script.google.com/macros/s/ここにあなたのGASウェブアプリURL/exec";
 
   let authToken = "";
   let currentIdentifier = "";
@@ -142,22 +154,15 @@
     document.getElementById("appCard").classList.add("hidden");
     document.getElementById("loginCard").classList.remove("hidden");
   }
-
- async function issueTicket() {
+  async function issueTicket() {
     const product = document.getElementById("product").value;
     try {
       const res = await callGas("issueTicket", { product });
       document.getElementById("issuedProduct").textContent = res.product;
       document.getElementById("issuedCode").textContent = res.code;
       const qrel = document.getElementById("qrcode");
-      qrel.innerHTML = "";
-      
-      // ==========================================
-      // ▼ ここから下の「あなたのGitHub PagesのURL」をご自身のものに書き換えます
-      // ==========================================
+      qrel.innerHTML = "";      
       const claimUrl = "https://naaaaa0000.github.io/popcorn-ticket/ticket.html?t=" + res.claimToken;
-      // ==========================================
-
       new QRCode(qrel, { text: claimUrl, width: 180, height: 180 });
       document.getElementById("issueResult").classList.remove("hidden");
     } catch(e) { alert(e.message); }
@@ -169,7 +174,7 @@
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(stream => {
       videoStream = stream; video.srcObject = stream; video.play();
       scanning = true; document.getElementById("video-container").style.display = "block";
-      document.getElementById("scanToggleBtn").textContent = "カメラ停止";
+      document.getElementById("scanToggleBtn").textContent = "⏹ カメラを停止する";
       requestAnimationFrame(tick);
     }).catch(err => alert("カメラ起動失敗: " + err.message));
   }
@@ -177,7 +182,7 @@
     scanning = false;
     if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
     document.getElementById("video-container").style.display = "none";
-    document.getElementById("scanToggleBtn").textContent = "カメラ起動（QRスキャン）";
+    document.getElementById("scanToggleBtn").textContent = "📷 カメラ起動（QRスキャン）";
   }
   function tick() {
     if (!scanning) return;
@@ -200,7 +205,7 @@
     try {
       const res = await callGas("lookupTicket", { query: val });
       currentIdentifier = res.redeemToken || res.code;
-      resArea.innerHTML = `<div class='result-box ok'><div>${res.message}</div><div style='font-size:22px;'>${res.product} (${res.code})</div></div>`;
+      resArea.innerHTML = `<div class='result-box ok'><div>${res.message}</div><div style='font-size:22px;'>${res.product} (${res.code})</div><div style='font-size:12px; font-weight:normal; margin-top:4px;'>場所: ${res.location} / 時間: ${res.hours}</div></div>`;
       document.getElementById("redeemBtn").classList.remove("hidden");
     } catch(e) { resArea.innerHTML = `<div class='result-box bad'>${e.message}</div>`; }
   }
@@ -217,12 +222,39 @@
   }
 
   async function loadSummary() {
-    const s = await callGas("getAdminSummary");
-    document.getElementById("summary").innerHTML = `総発行: ${s.total} | 未引換: ${s.unused} | 引換済: ${s.redeemed}`;
+    try {
+      const s = await callGas("getAdminSummary");
+      const el = document.getElementById("summary");
+      el.innerHTML = `
+        <div class="statgrid">
+          <div class="stat">全体発行<b>${s.total}</b></div>
+          <div class="stat">未引換<b>${s.unused}</b></div>
+          <div class="stat">引換済み<b>${s.redeemed}</b></div>
+          <div class="stat">取消済み<b>${s.cancelled}</b></div>
+          <div class="stat">ポップコーン<b>${s.productA.total} (未:${s.productA.unused})</b></div>
+          <div class="stat">コーヒー<b>${s.productB.total} (未:${s.productB.unused})</b></div>
+        </div>
+      `;
+      if(s.settings) {
+        document.getElementById("adminLocation").value = s.settings.LOCATION || "";
+        document.getElementById("adminHours").value = s.settings.HOURS || "";
+      }
+    } catch(e) { alert(e.message); }
   }
+
+  async function saveSettings() {
+    const LOCATION = document.getElementById("adminLocation").value.trim();
+    const HOURS = document.getElementById("adminHours").value.trim();
+    try {
+      const res = await callGas("updateSettings", { settings: { LOCATION, HOURS } });
+      alert(res.message);
+      loadSummary();
+    } catch(e) { alert(e.message); }
+  }
+
   async function cancelTicket() {
     const code = document.getElementById("cancelCode").value.trim();
-    if(!code || !confirm("取り消しますか？")) return;
+    if(!code || !confirm(code + " を取り消しますか？")) return;
     try { const res = await callGas("cancelTicket", { code }); alert(res.message); loadSummary(); } catch(e) { alert(e.message); }
   }
 </script>
