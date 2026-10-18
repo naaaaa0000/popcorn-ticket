@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>電子引換チケット</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #f8fafc; margin: 0; padding: 16px; color: #0f172a; }
+    .wrap { max-width: 420px; margin: 0 auto; background: #fff; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #e2e8f0; }
+    .header { background: #1d4ed8; color: #fff; padding: 18px; text-align: center; font-weight: bold; font-size: 18px; }
+    .body { padding: 20px; text-align: center; }
+    .badge { display: inline-block; padding: 4px 14px; border-radius: 99px; font-weight: bold; font-size: 13px; margin-bottom: 10px; }
+    .unused { background: #dcfce7; color: #166534; }
+    .redeemed { background: #e2e8f0; color: #475569; }
+    .code { font-size: 40px; font-weight: 900; letter-spacing: 4px; margin: 10px 0; background: #f1f5f9; border-radius: 12px; padding: 10px; }
+    .qr { display: flex; justify-content: center; margin: 16px 0; padding: 10px; background: #fff; border: 2px dashed #cbd5e1; border-radius: 12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">電子引換チケット</div>
+    <div class="body">
+      <div id="loading">読み込み中...</div>
+      <div id="ticketInfo" style="display:none;">
+        <div id="statusBadge" class="badge"></div>
+        <div id="productName" style="font-size: 24px; font-weight: 800;"></div>
+        <div class="code" id="codeText"></div>
+        <div class="qr"><div id="qrcode"></div></div>
+        <div style="font-size: 13px; color: #64748b;">スタッフにこの画面をご提示ください</div>
+      </div>
+      <div id="errorMsg" style="color: red; font-weight: bold; display: none;"></div>
+    </div>
+  </div>
+
+<script>
+  // ★index.htmlと同じGASのウェブアプリURLをここに貼り付けてください
+  const GAS_API_URL = "https://script.google.com/macros/s/AKfycbx3jGCRb8COs7t9kMqWGiVJrqWLMzj43K8Kto3O9fwvQXfYYiaRvoTBrSGLJbCEA7Nn/exec";
+
+  window.addEventListener("load", async () => {
+    const params = new URLSearchParams(location.search);
+    const claimToken = params.get("t");
+    if (!claimToken) { showError("無効なURLです。"); return; }
+
+    try {
+      const res = await fetch(GAS_API_URL, {
+        method: "POST",
+        body: JSON.stringify({ action: "getTicketByToken", claimToken })
+      });
+      const json = await res.json();
+      if (!json.success || !json.data.valid) throw new Error(json.message || json.data.message);
+
+      const t = json.data;
+      document.getElementById("loading").style.display = "none";
+      document.getElementById("ticketInfo").style.display = "block";
+      document.getElementById("productName").textContent = t.product;
+      document.getElementById("codeText").textContent = t.code;
+
+      const badge = document.getElementById("statusBadge");
+      if (t.status === "未引換") {
+        badge.textContent = "未引換（有効）"; badge.className = "badge unused";
+        new QRCode(document.getElementById("qrcode"), { text: t.redeemToken, width: 180, height: 180 });
+      } else {
+        badge.textContent = "引換済み"; badge.className = "badge redeemed";
+        document.querySelector(".qr").innerHTML = "<div style='color:#64748b; font-weight:bold;'>このチケットは引換済みです</div>";
+      }
+    } catch(e) { showError(e.message); }
+  });
+
+  function showError(msg) {
+    document.getElementById("loading").style.display = "none";
+    const err = document.getElementById("errorMsg");
+    err.textContent = msg; err.style.display = "block";
+  }
+</script>
+</body>
+</html>
